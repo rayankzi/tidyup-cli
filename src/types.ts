@@ -13,3 +13,17 @@ export interface OrganizationOptions {
   confirmSubdirectoryOrg: boolean;
   confirmReorganization: boolean;
 }
+
+export interface APIResponse {
+  data: {
+    aIRecommendations: string
+  }
+  extensions: {
+    invocations: {
+      aIRecommendations: {
+        executionId: string
+      }
+    }
+  }
+}
+

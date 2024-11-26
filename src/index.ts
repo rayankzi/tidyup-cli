@@ -1,8 +1,9 @@
 import {Command} from "commander";
 import figlet from "figlet";
 import {getDirectory, getFolderContents, organizeFiles} from "./lib.js";
-import {confirm} from "@inquirer/prompts";
+import {confirm, input} from "@inquirer/prompts";
 import ora from "ora";
+import {getRecommendations} from "./api.js";
 
 const program = new Command();
 
@@ -20,10 +21,11 @@ program.action(async () => {
   const confirmReorganization = await confirm({
     message: "Do you want me to organize the directory based on AI's suggestions?"
   })
+  const additionalText = await input({
+    message: "Is there anything else you want me to know before I start organizing?"
+  })
 
-  const {treeRepresentation} = getFolderContents(directory, confirmSubdirectoryOrg);
-  console.log(treeRepresentation);
-  // await organizeFiles({directory, confirmSubdirectoryOrg, confirmReorganization})
+  await organizeFiles({directory, confirmSubdirectoryOrg, confirmReorganization})
 })
 
 program.parse(process.argv);

@@ -3,6 +3,22 @@ import path from "node:path";
 import * as fs from "node:fs";
 import {OrganizationOptions, FolderResult, FolderContents} from "./types.js";
 import ora from "ora";
+import {getRecommendations} from "./api.js";
+
+
+export const runWithSpinner = async <T>(task: () => Promise<T>, message: string): Promise<T> => {
+  const spinner = ora(message).start();
+
+  try {
+    const result = await task();
+    spinner.succeed(`${message} ✅`);
+    return result;
+  } catch (error) {
+    spinner.fail(`${message} ❌`);
+    console.error(error.message || "An error occurred.");
+    throw error;
+  }
+};
 
 /**
  * Gets directory from user input.
@@ -106,30 +122,36 @@ export const getFolderContents = (
 export const organizeFiles = async ({
                                       directory,
                                       confirmSubdirectoryOrg,
-                                      confirmReorganization
+                                      confirmReorganization,
                                     }: OrganizationOptions) => {
-  // 3. receive recommendations
-
-  const spinner = ora("Fetching AI recommendations...").start();
-
   try {
-    // 1. get file contents
-    const {contents, treeRepresentation} = getFolderContents(directory, confirmSubdirectoryOrg);
+    // 1. Retrieve folder contents
+    const {treeRepresentation} = await runWithSpinner(
+      () => Promise.resolve(getFolderContents(directory, confirmSubdirectoryOrg)),
+      "Fetching folder contents"
+    );
 
-    // TODO: 2. send API request to modus
-    // need to send tree representation, returns a string JSON object
+    // 2. Get AI recommendations
+    const recommendations = await runWithSpinner(
+      () => getRecommendations(treeRepresentation),
+      "Fetching AI recommendations"
+    );
 
+    console.log("AI Recommendations received:", recommendations);
 
-    // TODO: 3 if confirm reorganization begin reorganizing folder
+    // 3. If confirmed, reorganize folder contents
     if (confirmReorganization) {
-      spinner.text = "Reorganizing folder contents"
-      // function to reorganize
+      await runWithSpinner(
+        async () => {
+          // Placeholder for actual reorganization logic
+          console.log("Reorganizing files based on AI recommendations...");
+          // Simulate reorganization delay
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        },
+        "Reorganizing folder contents"
+      );
     }
-
-    spinner.succeed("Organization complete ✅")
   } catch (error) {
-    // Stop spinner and log error
-    spinner.fail("An error occurred while organizing your files.");
-    console.error(error.message);
+    console.error("Failed to organize files:", error.message || error);
   }
-}
+};
