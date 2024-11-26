@@ -1,12 +1,15 @@
-const API_KEY = process.env.API_KEY;
-const ENDPOINT = process.env.ENDPOINT;
+import { APIResponseSchema } from "./schema.js"
 
-export const getRecommendations = async (treeRepresentation: string) => {
+export const getRecommendations = async (treeRepresentation: string, additionalText: string) => {
   const query = `
     query {
-      aIRecommendations(treeRepresentation: ${JSON.stringify(treeRepresentation)})
+      aIRecommendations(treeRepresentation: ${JSON.stringify(treeRepresentation)}, additionalText: ${JSON.stringify(additionalText)})
     }
   `
+
+  const API_KEY = process.env.API_KEY;
+  const ENDPOINT = process.env.ENDPOINT;
+
 
   const response = await fetch(ENDPOINT, {
     method: "POST",
@@ -17,8 +20,7 @@ export const getRecommendations = async (treeRepresentation: string) => {
     body: JSON.stringify({
       query: query,
     }),
-  }).then(res => res.json())
+  }).then(res => (APIResponseSchema.parse(res.json())))
 
-  console.log(response)
-  return response
+  return response.data.aIRecommendations
 }

@@ -1,10 +1,9 @@
 import {input, select} from "@inquirer/prompts";
 import path from "node:path";
 import * as fs from "node:fs";
-import {OrganizationOptions, FolderResult, FolderContents} from "./types.js";
+import {OrganizationOptions, FolderResult, FolderContents} from "./schema.js";
 import ora from "ora";
 import {getRecommendations} from "./api.js";
-
 
 export const runWithSpinner = async <T>(task: () => Promise<T>, message: string): Promise<T> => {
   const spinner = ora(message).start();
@@ -123,34 +122,31 @@ export const organizeFiles = async ({
   directory,
   confirmSubdirectoryOrg,
   confirmReorganization,
+  additionalText,
 }: OrganizationOptions) => {
   try {
-    // 1. Retrieve folder contents
-    const {treeRepresentation} = await runWithSpinner(
-      () => Promise.resolve(getFolderContents(directory, confirmSubdirectoryOrg)),
-      "Fetching folder contents"
-    );
+    const {treeRepresentation}  = getFolderContents(directory, confirmSubdirectoryOrg)
 
     // 2. Get AI recommendations
     const recommendations = await runWithSpinner(
-      () => getRecommendations(treeRepresentation),
+      () => getRecommendations(treeRepresentation, additionalText),
       "Fetching AI recommendations"
     );
 
     console.log("AI Recommendations received:", recommendations);
 
     // 3. If confirmed, reorganize folder contents
-    if (confirmReorganization) {
-      await runWithSpinner(
-        async () => {
-          // Placeholder for actual reorganization logic
-          console.log("Reorganizing files based on AI recommendations...");
-          // Simulate reorganization delay
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        },
-        "Reorganizing folder contents"
-      );
-    }
+    // if (confirmReorganization) {
+    //   await runWithSpinner(
+    //     async () => {
+    //       // Placeholder for actual reorganization logic
+    //       console.log("Reorganizing files based on AI recommendations...");
+    //       // Simulate reorganization delay
+    //       await new Promise((resolve) => setTimeout(resolve, 1000));
+    //     },
+    //     "Reorganizing folder contents"
+    //   );
+    // }
   } catch (error) {
     console.error("Failed to organize files:", error.message || error);
   }

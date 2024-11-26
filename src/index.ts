@@ -1,11 +1,12 @@
 import {Command} from "commander";
 import figlet from "figlet";
-import {getDirectory, getFolderContents, organizeFiles} from "./lib.js";
+import { getDirectory, organizeFiles } from "./lib.js"
 import {confirm, input} from "@inquirer/prompts";
-import ora from "ora";
 import {getRecommendations} from "./api.js";
+import dotenv from "dotenv";
 
 const program = new Command();
+dotenv.config();
 
 console.log(figlet.textSync("TidyUp"));
 
@@ -25,7 +26,7 @@ program.action(async () => {
     message: "Is there anything else you want me to know before I start organizing?"
   })
 
-  await organizeFiles({directory, confirmSubdirectoryOrg, confirmReorganization})
+  await organizeFiles({directory, confirmSubdirectoryOrg, confirmReorganization, additionalText})
 })
 
 program.parse(process.argv);
