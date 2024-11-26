@@ -1,32 +1,48 @@
-import {Command} from "commander";
-import figlet from "figlet";
+import { confirm, input } from "@inquirer/prompts"
+import boxen from "boxen"
+import chalk from "chalk"
+import { Command } from "commander"
+import dotenv from "dotenv"
+import figlet from "figlet"
+import { pastel } from "gradient-string"
 import { getDirectory, organizeFiles } from "./lib.js"
-import {confirm, input} from "@inquirer/prompts";
-import {getRecommendations} from "./api.js";
-import dotenv from "dotenv";
 
-const program = new Command();
-dotenv.config();
+dotenv.config()
+const program = new Command()
 
-console.log(figlet.textSync("TidyUp"));
+console.log(pastel(figlet.textSync("TidyUp", { horizontalLayout: "full" })))
 
-program
-  .version("1.0.0")
-  .description("Your AI file organizer!")
+console.log(
+  boxen(chalk.bold("Hi! I'm TidyUp, your AI-powered file organizer."), {
+    padding: 1,
+    margin: 1,
+    borderColor: "cyan"
+  })
+)
+
+program.version("1.0.0").description("Your AI file organizer!")
 
 program.action(async () => {
-  const directory = await getDirectory();
+  const directory = await getDirectory()
   const confirmSubdirectoryOrg = await confirm({
-    message: "Should I also organize the files inside the folders within the folder you provided?"
+    message:
+      "Should I also organize the files inside the folders within the folder you provided?"
   })
   const confirmReorganization = await confirm({
-    message: "Do you want me to organize the directory based on AI's suggestions?"
+    message:
+      "Do you want me to organize the directory based on AI's suggestions?"
   })
   const additionalText = await input({
-    message: "Is there anything else you want me to know before I start organizing?"
+    message:
+      "Is there anything else you want me to know before I start organizing?"
   })
 
-  await organizeFiles({directory, confirmSubdirectoryOrg, confirmReorganization, additionalText})
+  await organizeFiles({
+    directory,
+    confirmSubdirectoryOrg,
+    confirmReorganization,
+    additionalText
+  })
 })
 
-program.parse(process.argv);
+program.parse(process.argv)
