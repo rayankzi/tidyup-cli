@@ -21,7 +21,7 @@ export const OrganizationOptionsSchema = z.object({
   confirmReorganization: z.boolean(),
   additionalText: z.string()
 });
-
+//s
 export const APIResponseSchema = z.object({
   data: z.object({
     aIRecommendations: z.string()
