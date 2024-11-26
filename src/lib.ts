@@ -120,10 +120,10 @@ export const getFolderContents = (
 };
 
 export const organizeFiles = async ({
-                                      directory,
-                                      confirmSubdirectoryOrg,
-                                      confirmReorganization,
-                                    }: OrganizationOptions) => {
+  directory,
+  confirmSubdirectoryOrg,
+  confirmReorganization,
+}: OrganizationOptions) => {
   try {
     // 1. Retrieve folder contents
     const {treeRepresentation} = await runWithSpinner(
