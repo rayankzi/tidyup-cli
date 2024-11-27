@@ -1,6 +1,7 @@
 import * as fs from "node:fs"
 import path from "node:path"
-import { input, select } from "@inquirer/prompts"
+import { confirm, input, select } from "@inquirer/prompts"
+import chalk from "chalk"
 import ora from "ora"
 import { getRecommendations } from "./api.js"
 import { FolderContents, FolderResult, OrganizationOptions } from "./schema.js"
@@ -21,12 +22,6 @@ export const runWithSpinner = async <T>(
     throw error
   }
 }
-
-/**
- * Gets directory from user input.
- *
- * @returns An absolute path to a directory.
- */
 
 export const getDirectory = async () => {
   let directory: string
@@ -51,7 +46,6 @@ export const getDirectory = async () => {
   if (userInput === "current") {
     directory = process.cwd()
   } else {
-    // Blank
     const customDirectory = await input({
       message: "Please enter the custom directory path:",
       validate: (input) => {
@@ -73,20 +67,11 @@ export const getDirectory = async () => {
   return directory
 }
 
-/**
- * Recursively retrieves all files and subfolders in a given directory.
- * Also creates a tree-like string representation of the structure.
- *
- * @param folderPath - Absolute path to the folder.
- * @param listSubdirectories - If true, recursively retrieve contents of subdirectories.
- * @param indentLevel - Current indentation level for tree representation.
- * @returns An object containing folder contents and the tree representation.
- */
 export const getFolderContents = (
   folderPath: string,
   listSubdirectories: boolean,
   indentLevel = 0
-): FolderResult => {
+): { treeRepresentation: string } => {
   if (!fs.existsSync(folderPath)) {
     throw new Error(`The folder path "${folderPath}" does not exist.`)
   }
@@ -96,7 +81,6 @@ export const getFolderContents = (
     throw new Error(`The path "${folderPath}" is not a directory.`)
   }
 
-  const contents: FolderContents = { files: [], subfolders: {} }
   let treeRepresentation = `${"  ".repeat(indentLevel)}- ${path.basename(folderPath)}\n`
 
   const items = fs.readdirSync(folderPath)
@@ -112,7 +96,6 @@ export const getFolderContents = (
           true,
           indentLevel + 1
         )
-        contents.subfolders[item] = subfolderResult.contents
         treeRepresentation += subfolderResult.treeRepresentation
       } else {
         // Only list the subfolder name in the tree representation
@@ -121,80 +104,76 @@ export const getFolderContents = (
     } else if (itemStats.isFile()) {
       // Add file details and include in the tree representation
       const modifiedDate = itemStats.mtime
-      contents.files.push({ name: item, modifiedDate })
       treeRepresentation += `${"  ".repeat(indentLevel + 1)}- ${item} (Modified: ${modifiedDate.toISOString()})\n`
     }
   }
 
-  return { contents, treeRepresentation }
+  return { treeRepresentation }
 }
 
-const parseTreeRepresentation = (input: string): FolderContents => {
-  const treeStart = "Tree representation starts here"
-  const treeEnd = "Tree representation ends here"
+export const saveRecommendations = (info: string) => {
+  const filePath = path.join(process.cwd(), "recommendations.txt")
 
-  const treeStartIndex = input.indexOf(treeStart)
-  const treeEndIndex = input.indexOf(treeEnd)
-
-  if (treeStartIndex === -1 || treeEndIndex === -1)
-    throw new Error("Tree representation not found in the input.")
-
-  const tree = input
-    .slice(treeStartIndex + treeStart.length, treeEndIndex)
-    .trim()
-    .split("\n")
-
-  const parseFolder = (
-    lines: string[],
-    indentLevel: number = 0
-  ): FolderContents => {
-    const folderContents: FolderContents = {
-      files: [],
-      subfolders: {}
-    }
-
-    while (lines.length > 0) {
-      const line = lines[0]
-      const currentIndentLevel = line.search(/\S|$/) / 2
-
-      if (currentIndentLevel < indentLevel) break
-
-      lines.shift()
-
-      if (currentIndentLevel > indentLevel)
-        throw new Error(
-          `Unexpected indentation at line: "${line.trim()}". Check tree structure.`
-        )
-
-      const trimmedLine = line.trim()
-      if (trimmedLine.endsWith("/")) {
-        const folderName = trimmedLine.slice(0, -1)
-        folderContents.subfolders[folderName] = parseFolder(
-          lines,
-          indentLevel + 1
-        )
-      } else {
-        const match = trimmedLine.match(/^(.*)\s\(Modified:\s(.*)\)$/)
-        if (!match)
-          throw new Error(`Invalid file format at line: "${line.trim()}".`)
-
-        folderContents.files.push({
-          name: match[1].trim(),
-          modifiedDate: new Date(match[2].trim())
-        })
-      }
-    }
-
-    return folderContents
+  try {
+    fs.writeFileSync(filePath, info, "utf8")
+  } catch (error) {
+    console.error(`Error saving recommendations: ${error.message}`)
   }
+}
 
-  return parseFolder(tree)
+export const displayRecommendations = (recommendations: string) => {
+  recommendations = recommendations.replace(
+    "Explanation of Recommendations:",
+    ""
+  )
+  const title = chalk.bold.underline.cyan("Explanation of Recommendations:")
+  const treeTitle = chalk.bold.cyan("\nRevised Directory Tree:\n")
+  const additionalNotesTitle = chalk.bold.cyan("\nAdditional Notes:\n")
+
+  const [explanation, tree, additionalNotes] = recommendations.split(
+    /Revised Directory Tree:|Additional Notes:/g
+  )
+
+  const treeRepresentation = tree
+    ?.trim()
+    .split("\n")
+    .map((line) => {
+      const trimmedLine = line.trim()
+
+      // Check for specific patterns to style lines
+      if (line.includes("Modified:")) {
+        // Highlight files and modified dates separately
+        const [beforeDate, afterDate] = trimmedLine.split("(Modified:")
+        const fileName = chalk.yellow(beforeDate.trim())
+        const modifiedDate = chalk.gray(`(Modified:${afterDate.trim()}`)
+        return line.replace(trimmedLine, `${fileName} ${modifiedDate}`) // Replace while preserving original spaces
+      } else if (line.includes("/")) {
+        return line.replace(trimmedLine, chalk.blueBright(trimmedLine)) // Bright blue for folders
+      }
+
+      return line.replace(trimmedLine, chalk.white(trimmedLine)) // Default white for other text
+    })
+    .join("\n")
+
+  // Format additional notes with green for bullet points
+  const formattedNotes = additionalNotes
+    ?.trim()
+    .split("\n")
+    .map((line) => chalk.white(line.trim()))
+    .join("\n")
+
+  // Display in terminal
+  console.log(title)
+  console.log(chalk.white(explanation.trim()))
+  console.log(treeTitle)
+  console.log(treeRepresentation)
+  console.log(additionalNotesTitle)
+  console.log(formattedNotes)
 }
 
 export const organizeFiles = async ({
   directory,
   confirmSubdirectoryOrg,
-  confirmReorganization,
   additionalText
 }: OrganizationOptions) => {
   try {
@@ -203,26 +182,23 @@ export const organizeFiles = async ({
       confirmSubdirectoryOrg
     )
 
-    // 2. Get AI recommendations
     const recommendations = await runWithSpinner(
       () => getRecommendations(treeRepresentation, additionalText),
       "Fetching AI recommendations"
     )
 
-    console.log("AI Recommendations received:", recommendations)
+    displayRecommendations(recommendations)
 
-    // 3. If confirmed, reorganize folder contents
-    // if (confirmReorganization) {
-    //   await runWithSpinner(
-    //     async () => {
-    //       // Placeholder for actual reorganization logic
-    //       console.log("Reorganizing files based on AI recommendations...");
-    //       // Simulate reorganization delay
-    //       await new Promise((resolve) => setTimeout(resolve, 1000));
-    //     },
-    //     "Reorganizing folder contents"
-    //   );
-    // }
+    const doesSaveFile = await confirm({
+      message: "Do you want me to save the AI's recommendations in a text file?"
+    })
+
+    if (doesSaveFile) saveRecommendations(recommendations)
+
+    // const newTreeRepresentation: FolderContents =
+    //   parseTreeRepresentation(recommendations)
+
+    // console.log(newTreeRepresentation)
   } catch (error) {
     console.error("Failed to organize files:", error.message || error)
   }

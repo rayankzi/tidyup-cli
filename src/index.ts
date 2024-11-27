@@ -5,7 +5,7 @@ import { Command } from "commander"
 import dotenv from "dotenv"
 import figlet from "figlet"
 import { pastel } from "gradient-string"
-import { getDirectory, organizeFiles } from "./lib.js"
+import { displayRecommendations, getDirectory, organizeFiles } from "./lib.js"
 
 dotenv.config()
 const program = new Command()
@@ -40,7 +40,6 @@ program.action(async () => {
   await organizeFiles({
     directory,
     confirmSubdirectoryOrg,
-    confirmReorganization,
     additionalText
   })
 })

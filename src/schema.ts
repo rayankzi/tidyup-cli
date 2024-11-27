@@ -8,19 +8,18 @@ export const FolderContentsSchema = z.object({
     })
   ),
   subfolders: z.record(z.lazy(() => FolderContentsSchema))
-});
+})
 
 export const FolderResultSchema = z.object({
   contents: FolderContentsSchema,
   treeRepresentation: z.string()
-});
+})
 
 export const OrganizationOptionsSchema = z.object({
   directory: z.string(),
   confirmSubdirectoryOrg: z.boolean(),
-  confirmReorganization: z.boolean(),
   additionalText: z.string()
-});
+})
 
 export const APIResponseSchema = z.object({
   data: z.object({
@@ -33,9 +32,9 @@ export const APIResponseSchema = z.object({
       })
     })
   })
-});
+})
 
-export type FolderContents = z.infer<typeof FolderContentsSchema>;
-export type FolderResult = z.infer<typeof FolderResultSchema>;
-export type OrganizationOptions = z.infer<typeof OrganizationOptionsSchema>;
-export type APIResponse = z.infer<typeof APIResponseSchema>;
+export type FolderContents = z.infer<typeof FolderContentsSchema>
+export type FolderResult = z.infer<typeof FolderResultSchema>
+export type OrganizationOptions = z.infer<typeof OrganizationOptionsSchema>
+export type APIResponse = z.infer<typeof APIResponseSchema>

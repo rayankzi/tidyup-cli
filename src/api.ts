@@ -1,12 +1,13 @@
-import { APIResponseSchema } from "./schema.js"
-
 export const getRecommendations = async (
   treeRepresentation: string,
   additionalText: string
 ) => {
   const query = `
     query {
-      aIRecommendations(treeRepresentation: ${JSON.stringify(treeRepresentation)}, additionalText: ${JSON.stringify(additionalText)})
+      aIRecommendations(
+        treeRepresentation: ${JSON.stringify(treeRepresentation)},
+        additionalText: ${JSON.stringify(additionalText)}
+      )
     }
   `
 
@@ -22,7 +23,7 @@ export const getRecommendations = async (
     body: JSON.stringify({
       query: query
     })
-  }).then((res) => APIResponseSchema.parse(res.json()))
+  }).then((res) => res.json())
 
-  return response.data.aIRecommendations
+  return response.data.aIRecommendations as string
 }
