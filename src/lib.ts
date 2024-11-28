@@ -122,10 +122,11 @@ export const saveRecommendations = (info: string) => {
 }
 
 export const displayRecommendations = (recommendations: string) => {
-  recommendations = recommendations.replace(
-    "Explanation of Recommendations:",
-    ""
-  )
+  recommendations = recommendations
+    .replace("Explanation of Recommendations:", "")
+    .replace("Tree representation starts here", "")
+    .replace("Tree representation ends here", "")
+
   const title = chalk.bold.underline.cyan("Explanation of Recommendations:")
   const treeTitle = chalk.bold.cyan("\nRevised Directory Tree:\n")
   const additionalNotesTitle = chalk.bold.cyan("\nAdditional Notes:\n")

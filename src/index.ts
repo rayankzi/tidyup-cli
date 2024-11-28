@@ -28,10 +28,6 @@ program.action(async () => {
     message:
       "Should I also organize the files inside the folders within the folder you provided?"
   })
-  const confirmReorganization = await confirm({
-    message:
-      "Do you want me to organize the directory based on AI's suggestions?"
-  })
   const additionalText = await input({
     message:
       "Is there anything else you want me to know before I start organizing?"
