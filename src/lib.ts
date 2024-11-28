@@ -4,7 +4,7 @@ import { confirm, input, select } from "@inquirer/prompts"
 import chalk from "chalk"
 import ora from "ora"
 import { getRecommendations } from "./api.js"
-import { FolderContents, FolderResult, OrganizationOptions } from "./schema.js"
+import { OrganizationOptions } from "./schema.js"
 
 export const runWithSpinner = async <T>(
   task: () => Promise<T>,
@@ -20,6 +20,39 @@ export const runWithSpinner = async <T>(
     spinner.fail(`${message} ❌`)
     console.error(error.message || "An error occurred.")
     throw error
+  }
+}
+
+export const organizeFiles = async ({
+  directory,
+  confirmSubdirectoryOrg,
+  additionalText
+}: OrganizationOptions) => {
+  try {
+    const { treeRepresentation, folderPath } = getFolderContents(
+      directory,
+      confirmSubdirectoryOrg
+    )
+
+    const recommendations = await runWithSpinner(
+      () => getRecommendations(treeRepresentation, additionalText),
+      "Fetching AI recommendations"
+    )
+
+    displayRecommendations(recommendations)
+
+    const doesSaveFile = await confirm({
+      message: "Do you want me to save the AI's recommendations in a text file?"
+    })
+
+    if (doesSaveFile) saveRecommendations(recommendations)
+
+    // const newTreeRepresentation: FolderContents =
+    //   parseTreeRepresentation(recommendations)
+
+    // console.log(newTreeRepresentation)
+  } catch (error) {
+    console.error("Failed to organize files:", error.message || error)
   }
 }
 
@@ -71,44 +104,38 @@ export const getFolderContents = (
   folderPath: string,
   listSubdirectories: boolean,
   indentLevel = 0
-): { treeRepresentation: string } => {
-  if (!fs.existsSync(folderPath)) {
+): { treeRepresentation: string; folderPath: string } => {
+  if (!fs.existsSync(folderPath))
     throw new Error(`The folder path "${folderPath}" does not exist.`)
-  }
 
   const stats = fs.statSync(folderPath)
-  if (!stats.isDirectory()) {
+  if (!stats.isDirectory())
     throw new Error(`The path "${folderPath}" is not a directory.`)
-  }
 
   let treeRepresentation = `${"  ".repeat(indentLevel)}- ${path.basename(folderPath)}\n`
 
   const items = fs.readdirSync(folderPath)
+
   for (const item of items) {
     const itemPath = path.join(folderPath, item)
     const itemStats = fs.statSync(itemPath)
 
     if (itemStats.isDirectory()) {
       if (listSubdirectories) {
-        // Recursively retrieve subfolder contents
         const subfolderResult = getFolderContents(
           itemPath,
           true,
           indentLevel + 1
         )
         treeRepresentation += subfolderResult.treeRepresentation
-      } else {
-        // Only list the subfolder name in the tree representation
-        treeRepresentation += `${"  ".repeat(indentLevel + 1)}- ${item}/\n`
-      }
+      } else treeRepresentation += `${"  ".repeat(indentLevel + 1)}- ${item}/\n`
     } else if (itemStats.isFile()) {
-      // Add file details and include in the tree representation
       const modifiedDate = itemStats.mtime
       treeRepresentation += `${"  ".repeat(indentLevel + 1)}- ${item} (Modified: ${modifiedDate.toISOString()})\n`
     }
   }
 
-  return { treeRepresentation }
+  return { treeRepresentation, folderPath }
 }
 
 export const saveRecommendations = (info: string) => {
@@ -141,29 +168,25 @@ export const displayRecommendations = (recommendations: string) => {
     .map((line) => {
       const trimmedLine = line.trim()
 
-      // Check for specific patterns to style lines
       if (line.includes("Modified:")) {
-        // Highlight files and modified dates separately
         const [beforeDate, afterDate] = trimmedLine.split("(Modified:")
         const fileName = chalk.yellow(beforeDate.trim())
         const modifiedDate = chalk.gray(`(Modified:${afterDate.trim()}`)
-        return line.replace(trimmedLine, `${fileName} ${modifiedDate}`) // Replace while preserving original spaces
-      } else if (line.includes("/")) {
-        return line.replace(trimmedLine, chalk.blueBright(trimmedLine)) // Bright blue for folders
-      }
 
-      return line.replace(trimmedLine, chalk.white(trimmedLine)) // Default white for other text
+        return line.replace(trimmedLine, `${fileName} ${modifiedDate}`)
+      } else if (line.includes("/"))
+        return line.replace(trimmedLine, chalk.blueBright(trimmedLine))
+
+      return line.replace(trimmedLine, chalk.white(trimmedLine))
     })
     .join("\n")
 
-  // Format additional notes with green for bullet points
   const formattedNotes = additionalNotes
     ?.trim()
     .split("\n")
     .map((line) => chalk.white(line.trim()))
     .join("\n")
 
-  // Display in terminal
   console.log(title)
   console.log(chalk.white(explanation.trim()))
   console.log(treeTitle)
@@ -172,35 +195,92 @@ export const displayRecommendations = (recommendations: string) => {
   console.log(formattedNotes)
 }
 
-export const organizeFiles = async ({
-  directory,
-  confirmSubdirectoryOrg,
-  additionalText
-}: OrganizationOptions) => {
+export const rearrangeFiles = (
+  dirPath: string,
+  oldTree: string,
+  newTree: string
+) => {
   try {
-    const { treeRepresentation } = getFolderContents(
-      directory,
-      confirmSubdirectoryOrg
-    )
+    const parseTree = (tree) => {
+      const lines = tree
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
 
-    const recommendations = await runWithSpinner(
-      () => getRecommendations(treeRepresentation, additionalText),
-      "Fetching AI recommendations"
-    )
+      const structure = []
+      let stack = [structure]
 
-    displayRecommendations(recommendations)
+      lines.forEach((line) => {
+        const depth = line.lastIndexOf("  ") + 1 // Indentation-based depth
+        const name = line.replace(/^[-\s]+/, "").trim()
 
-    const doesSaveFile = await confirm({
-      message: "Do you want me to save the AI's recommendations in a text file?"
+        const item = { name, children: [], isFolder: line.endsWith("/") }
+
+        // Adjust stack to the correct depth
+        stack = stack.slice(0, depth + 1)
+        const parent = stack[stack.length - 1]
+        parent.push(item)
+
+        // Push this directory to the stack if it's a folder
+        if (item.isFolder) {
+          stack.push(item.children)
+        }
+      })
+
+      return structure
+    }
+
+    const buildPaths = (basePath, structure) => {
+      const paths = []
+      structure.forEach((item) => {
+        const currentPath = path.join(basePath, item.name)
+
+        if (item.isFolder) {
+          paths.push(...buildPaths(currentPath, item.children))
+        } else {
+          paths.push(currentPath)
+        }
+      })
+      return paths
+    }
+
+    const oldStructure = parseTree(oldTree)
+    const newStructure = parseTree(newTree)
+
+    const oldPaths = buildPaths(dirPath, oldStructure)
+    const newPaths = buildPaths(dirPath, newStructure)
+
+    // Create new folders
+    newPaths.forEach((newPath) => {
+      if (!fs.existsSync(newPath)) {
+        fs.mkdirSync(path.dirname(newPath), { recursive: true })
+      }
     })
 
-    if (doesSaveFile) saveRecommendations(recommendations)
+    // Move files
+    oldPaths.forEach((oldPath, index) => {
+      const newPath = newPaths[index]
+      if (fs.existsSync(oldPath) && oldPath !== newPath) {
+        fs.renameSync(oldPath, newPath)
+      }
+    })
 
-    // const newTreeRepresentation: FolderContents =
-    //   parseTreeRepresentation(recommendations)
-
-    // console.log(newTreeRepresentation)
+    console.log("Files rearranged successfully!")
   } catch (error) {
-    console.error("Failed to organize files:", error.message || error)
+    console.error("Failed to organize files:", error.message)
   }
+}
+
+const extractTreeRepresentation = (response: string) => {
+  const startMarker = "Tree representation starts here"
+  const endMarker = "Tree representation ends here"
+
+  const startIndex = response.indexOf(startMarker)
+  const endIndex = response.indexOf(endMarker)
+
+  if (startIndex === -1 || endIndex === -1 || startIndex >= endIndex) {
+    throw new Error("Tree representation markers not found or invalid.")
+  }
+
+  return response.slice(startIndex + startMarker.length, endIndex).trim()
 }
