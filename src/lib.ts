@@ -47,10 +47,9 @@ export const organizeFiles = async ({
 
     if (doesSaveFile) saveRecommendations(recommendations)
 
-    // const newTreeRepresentation: FolderContents =
-    //   parseTreeRepresentation(recommendations)
-
-    // console.log(newTreeRepresentation)
+    console.log(
+      chalk.cyanBright("Thank you for using me! Have fun organizing!")
+    )
   } catch (error) {
     console.error("Failed to organize files:", error.message || error)
   }
@@ -269,18 +268,4 @@ export const rearrangeFiles = (
   } catch (error) {
     console.error("Failed to organize files:", error.message)
   }
-}
-
-const extractTreeRepresentation = (response: string) => {
-  const startMarker = "Tree representation starts here"
-  const endMarker = "Tree representation ends here"
-
-  const startIndex = response.indexOf(startMarker)
-  const endIndex = response.indexOf(endMarker)
-
-  if (startIndex === -1 || endIndex === -1 || startIndex >= endIndex) {
-    throw new Error("Tree representation markers not found or invalid.")
-  }
-
-  return response.slice(startIndex + startMarker.length, endIndex).trim()
 }

@@ -27,7 +27,7 @@ program.action(async () => {
   const directory = await getDirectory()
   const confirmSubdirectoryOrg = await confirm({
     message:
-      "Should I also organize the files inside the folders within the folder you provided?"
+      "Should I also give suggestions on how to organize the files inside the folders within the folder you provided?"
   })
   const additionalText = await input({
     message:
