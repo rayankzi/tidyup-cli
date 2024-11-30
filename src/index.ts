@@ -1,3 +1,4 @@
+#! /usr/bin/env node
 import { confirm, input } from "@inquirer/prompts"
 import boxen from "boxen"
 import chalk from "chalk"
@@ -5,7 +6,7 @@ import { Command } from "commander"
 import dotenv from "dotenv"
 import figlet from "figlet"
 import { pastel } from "gradient-string"
-import { displayRecommendations, getDirectory, organizeFiles } from "./lib.js"
+import { getDirectory, organizeFiles } from "./lib.js"
 
 dotenv.config()
 const program = new Command()
